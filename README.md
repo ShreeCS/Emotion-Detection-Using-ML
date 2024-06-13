@@ -1,3 +1,8 @@
+<img src="https://github.com/ShreeCS/Emotion-Detection-Using-ML/assets/113189060/67766e8c-23b5-4dd8-a303-fd2e0636866f" alt="Index_Page" width="45%">
+<img src="https://github.com/ShreeCS/Emotion-Detection-Using-ML/assets/113189060/e2a3934e-c8a8-407b-9a9d-d74c17684522" alt="Realtime" width="45%">
+
+<p style="text-align: center;">Home Page and the Realtime video played on the app, the app also supports Realtime video through Webcam</p>
+
 # Models Creation Process used in the Project
 
 ## Model 1, For Facial Expressions
