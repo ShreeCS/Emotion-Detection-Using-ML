@@ -1,4 +1,6 @@
-# Model Creation used in the Project
+# Models Creation Process used in the Project
+
+## Model 1, For Facial Expressions
 
 ### Importing Libraries and Modules
 ```python
@@ -212,3 +214,125 @@ plt.imshow(img.reshape(48, 48), cmap='gray')
 - Tests the model's predictions on new images and compares them to the original labels.
 
 In summary, the code builds, trains, and evaluates a convolutional neural network for emotion detection from facial images, saving the trained model for future use. It includes preprocessing steps, model architecture, training process, and prediction on new images.
+
+## Model 2, For EEG Signals
+### Importing Libraries and Modules
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from sklearn.metrics import confusion_matrix, classification_report
+```
+
+### 1. **Load Data and Plot a Sample**
+```python
+data = pd.read_csv('../content/emotions.csv')
+sample = data.loc[0, 'fft_0_b':'fft_749_b']
+
+plt.figure(figsize=(16, 10))
+plt.plot(range(len(sample)), sample)
+plt.title("Features fft_0_b through fft_749_b")
+plt.show()
+```
+- **Loading the Data:** The data is loaded from a CSV file named `emotions.csv` into a pandas DataFrame called `data`.
+- **Plotting a Sample:** A single sample (first row) from the dataset is selected to visualize its features (`fft_0_b` to `fft_749_b`). These features are likely the Fast Fourier Transform (FFT) coefficients of EEG signals.
+- **Visualization:** A plot of these features helps in understanding the pattern and distribution of the data for a single sample.
+
+### 2. **Label Mapping and Preprocessing**
+
+```python
+label_mapping = {'NEGATIVE': 0, 'NEUTRAL': 1, 'POSITIVE': 2}
+
+def preprocess_inputs(df):
+    df = df.copy()
+    df['label'] = df['label'].replace(label_mapping)
+    y = df['label'].copy()
+    X = df.drop('label', axis=1).copy()
+    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.7, random_state=123)
+    return X_train, X_test, y_train, y_test
+
+X_train, X_test, y_train, y_test = preprocess_inputs(data)
+```
+- **Label Mapping:** The emotion labels are converted from categorical (text) form to numerical form using a dictionary (`label_mapping`).
+- **Preprocessing Function:** 
+  - **Label Conversion:** The function `preprocess_inputs` creates a copy of the DataFrame and replaces the text labels with numerical labels.
+  - **Feature-Label Split:** The labels (`y`) are separated from the features (`X`).
+  - **Train-Test Split:** The data is split into training (70%) and testing (30%) sets to evaluate the model's performance on unseen data.
+
+### 3. **Model Definition**
+
+```python
+inputs = tf.keras.Input(shape=(X_train.shape[1],))
+expand_dims = tf.expand_dims(inputs, axis=2)
+gru = tf.keras.layers.GRU(256, return_sequences=True)(expand_dims)
+flatten = tf.keras.layers.Flatten()(gru)
+outputs = tf.keras.layers.Dense(3, activation='softmax')(flatten)
+model = tf.keras.Model(inputs=inputs, outputs=outputs)
+```
+- **Input Layer:** Defines the input shape based on the number of features in `X_train`.
+- **Expand Dimensions:** The input is expanded to add an additional dimension, which is required for the GRU layer.
+- **GRU Layer:** A Gated Recurrent Unit (GRU) layer with 256 units is used. It processes the sequential data and returns the full sequence.
+- **Flatten Layer:** The output of the GRU layer is flattened into a single vector.
+- **Dense Layer:** A dense (fully connected) layer with 3 units (corresponding to the three emotion classes) and a softmax activation function is used for classification.
+- **Model Compilation:** The model is compiled with the Adam optimizer and sparse categorical cross-entropy loss function. The accuracy metric is also specified for evaluation.
+
+### 4. **Model Training**
+
+```python
+history = model.fit(
+    X_train,
+    y_train,
+    validation_split=0.2,
+    batch_size=32,
+    epochs=50,
+    callbacks=[
+        tf.keras.callbacks.EarlyStopping(
+            monitor='val_loss',
+            patience=5,
+            restore_best_weights=True
+        )
+    ]
+)
+```
+- **Training:** The model is trained on the training data.
+  - **Validation Split:** 20% of the training data is used for validation during training.
+  - **Batch Size:** The training is done in batches of 32 samples.
+  - **Epochs:** The model is trained for up to 50 epochs.
+  - **Early Stopping:** Training stops early if the validation loss does not improve for 5 consecutive epochs. The best model weights are restored.
+
+### 5. **Model Evaluation and Saving**
+
+```python
+model_acc = model.evaluate(X_test, y_test, verbose=0)[1]
+print("Test Accuracy: {:.3f}%".format(model_acc * 100))
+model.save("emotion_detection_model")
+```
+- **Evaluation:** The model is evaluated on the test set, and the test accuracy is printed.
+- **Saving:** The trained model is saved to a file named `emotion_detection_model` for later use.
+
+### 6. **Predictions and Confusion Matrix**
+
+```python
+y_pred = np.array(list(map(lambda x: np.argmax(x), model.predict(X_test))))
+
+cm = confusion_matrix(y_test, y_pred)
+clr = classification_report(y_test, y_pred, target_names=label_mapping.keys())
+
+plt.figure(figsize=(8, 8))
+sns.heatmap(cm, annot=True, vmin=0, fmt='g', cbar=False, cmap='Blues')
+plt.xticks(np.arange(3) + 0.5, label_mapping.keys())
+plt.yticks(np.arange(3) + 0.5, label_mapping.keys())
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+
+print("Classification Report:\n----------------------\n", clr)
+```
+- **Predictions:** The model makes predictions on the test set. The `np.argmax` function is used to convert the predicted probabilities to class labels.
+- **Confusion Matrix:** The confusion matrix is computed to see how well the model's predictions match the actual labels.
+- **Classification Report:** A detailed classification report is generated, showing precision, recall, and F1-score for each class.
+- **Visualization:** The confusion matrix is visualized using a heatmap for a clearer understanding of the model's performance.
