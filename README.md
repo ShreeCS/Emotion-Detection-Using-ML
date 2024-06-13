@@ -1,4 +1,3 @@
-# Models Creation Process used in the Project
 ## Model 1, For Facial Expressions
 ### Importing Libraries and Modules
 ```python
